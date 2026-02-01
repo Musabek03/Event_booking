@@ -54,7 +54,7 @@ class Event(models.Model):
     price = models.DecimalField(max_digits=12, decimal_places=2)
     total_seats = models.PositiveIntegerField()
     available_seats = models.PositiveIntegerField()
-    image = models.ImageField(upload_to="events_images/")
+    image = models.ImageField(upload_to="events_images/", blank=True, null=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
