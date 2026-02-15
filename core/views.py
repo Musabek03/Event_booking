@@ -1,8 +1,12 @@
 from rest_framework import viewsets,filters, permissions,status,generics,mixins
 from rest_framework.viewsets import GenericViewSet
 from .models import CustomUser, Category,Event,Booking
-from .serializers import EventsSerializer,BookingSerializer
-
+from .serializers import EventsSerializer,BookingSerializer,ReqeustBookingSerializer
+from rest_framework.decorators import action
+from drf_spectacular.utils import extend_schema
+from django.shortcuts import get_object_or_404
+from rest_framework.response import Response
+from django.db import transaction
 
 class EventsView(mixins.ListModelMixin, mixins.RetrieveModelMixin,GenericViewSet):
     queryset = Event.objects.all()
@@ -10,9 +14,65 @@ class EventsView(mixins.ListModelMixin, mixins.RetrieveModelMixin,GenericViewSet
     permission_classes = [permissions.AllowAny]
 
 
-
-class BookingView(mixins.ListModelMixin, mixins.DestroyModelMixin,GenericViewSet):
-    queryset = Booking
+class BookingView(GenericViewSet):
+    queryset = Booking.objects.all()
     serializer_class = BookingSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Booking.objects.filter(user=self.request.user)
+
+    @extend_schema(request=None, responses={204:None})
+    @action(detail=True, methods=['post'], url_path='cancel')
+    def cancel(self, request, pk=None):
+        booking = get_object_or_404(Booking, pk=pk, user=request.user)
+        with transaction.atomic():
+            event = booking.event
+            event.available_seats += booking.quantity
+            event.save()
+
+            booking.delete()
+
+        return Response({'message':'Bron biykar etildi'},status=status.HTTP_204_NO_CONTENT)
+
+    
+    
+    @action(detail=False, methods=['get'])
+    def my_tickets(self,requests):
+        bookings = Booking.objects.filter(user=self.request.user)
+        serializer = self.get_serializer(bookings, many=True)
+        return Response(serializer.data)
+        
+
+
+
+    @extend_schema(request=ReqeustBookingSerializer)
+    @action(detail=False, methods=['post'])
+    def book_event(self,requests):
+        serializer = ReqeustBookingSerializer(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+
+        event_id = serializer.validated_data['event_id']
+        quantity = serializer.validated_data['quantity']
+
+        event  = get_object_or_404(Event, id=event_id)
+
+        booking, created = Booking.objects.get_or_create(user=self.request.user, event=event,  defaults={'quantity': quantity})
+
+        new_quantity = quantity if created else booking.quantity + quantity
+
+        if event.available_seats < new_quantity:
+            return Response({'error': 'Eventte bunsha bos orin joq'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        event.available_seats -= quantity
+        event.save()
+        booking.quantity = new_quantity
+        booking.total_price = booking.event.price * new_quantity
+        booking.save()
+
+
+        return Response({'success': 'Bilet bronlandi'})
+
+
+    
 
