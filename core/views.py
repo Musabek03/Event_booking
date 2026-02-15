@@ -15,7 +15,6 @@ class EventsView(mixins.ListModelMixin, mixins.RetrieveModelMixin,GenericViewSet
 
 
 class BookingView(GenericViewSet):
-    queryset = Booking.objects.all()
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -38,7 +37,7 @@ class BookingView(GenericViewSet):
     
     
     @action(detail=False, methods=['get'])
-    def my_tickets(self,requests):
+    def my_tickets(self,request):
         bookings = Booking.objects.filter(user=self.request.user)
         serializer = self.get_serializer(bookings, many=True)
         return Response(serializer.data)
@@ -61,14 +60,25 @@ class BookingView(GenericViewSet):
 
         new_quantity = quantity if created else booking.quantity + quantity
 
-        if event.available_seats < new_quantity:
-            return Response({'error': 'Eventte bunsha bos orin joq'}, status=status.HTTP_400_BAD_REQUEST)
+        if new_quantity > 5:
+            return Response({'error':'Bir user maksimum 5 bilet bronlawi mumkin!'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not event.is_active:
+            return Response({'error':'Aktiv emes event'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if event.available_seats < quantity:
+            return Response({'error': f'Eventte bunsha bos orin joq, qalgan biletler sani: {event.available_seats} '}, status=status.HTTP_400_BAD_REQUEST)
         
-        event.available_seats -= quantity
-        event.save()
-        booking.quantity = new_quantity
-        booking.total_price = booking.event.price * new_quantity
-        booking.save()
+        if not event.available_seats - new_quantity > 0:
+            return Response({'error':f'Bul mugdarda bilet qalmagan, qalgan biletler sani: {event.available_seats}'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        with transaction.atomic():
+            event.available_seats -= quantity
+            event.save()
+
+            booking.quantity = new_quantity
+            booking.total_price = booking.event.price * new_quantity
+            booking.save()
 
 
         return Response({'success': 'Bilet bronlandi'})
