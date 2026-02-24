@@ -1,6 +1,6 @@
 from django.urls import path,include
 from rest_framework.routers import DefaultRouter
-from .views import EventsView,BookingView
+from .views import EventsView,BookingView, UsereRegisterView
 
 router = DefaultRouter()
 
@@ -8,6 +8,8 @@ router.register(r"events",EventsView,basename='event')
 router.register(r"bookings", BookingView, basename="booking" )
 
 urlpatterns = [
-    path("",include(router.urls))
+    path("",include(router.urls)),
+    path("register", UsereRegisterView.as_view(), name="register")
+
 ]
 

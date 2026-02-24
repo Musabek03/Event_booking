@@ -1,12 +1,14 @@
 from rest_framework import viewsets,filters, permissions,status,generics,mixins
 from rest_framework.viewsets import GenericViewSet
 from .models import CustomUser, Category,Event,Booking
-from .serializers import EventsSerializer,BookingSerializer,ReqeustBookingSerializer
+from .serializers import EventsSerializer,BookingSerializer,ReqeustBookingSerializer, RegisterUserSerializer
 from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from django.db import transaction
+from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 class EventsView(mixins.ListModelMixin, mixins.RetrieveModelMixin,GenericViewSet):
     queryset = Event.objects.all()
@@ -47,7 +49,7 @@ class BookingView(GenericViewSet):
 
     @extend_schema(request=ReqeustBookingSerializer)
     @action(detail=False, methods=['post'])
-    def book_event(self,requests):
+    def book_event(self,request):
         serializer = ReqeustBookingSerializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -59,6 +61,9 @@ class BookingView(GenericViewSet):
         booking, created = Booking.objects.get_or_create(user=self.request.user, event=event,  defaults={'quantity': quantity})
 
         new_quantity = quantity if created else booking.quantity + quantity
+
+        if event.date_time < timezone.now():
+            raise ValidationError({"detail": "Otip ketken eventke bilet alip bolmaydi"})
 
         if new_quantity > 5:
             return Response({'error':'Bir user maksimum 5 bilet bronlawi mumkin!'}, status=status.HTTP_400_BAD_REQUEST)
@@ -82,6 +87,13 @@ class BookingView(GenericViewSet):
 
 
         return Response({'success': 'Bilet bronlandi'})
+
+
+class UsereRegisterView(generics.CreateAPIView):
+
+    queryset = CustomUser.objects.all()
+    serializer_class = RegisterUserSerializer
+
 
 
     
