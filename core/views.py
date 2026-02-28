@@ -9,12 +9,16 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
+from django_filters.rest_framework import DjangoFilterBackend
+from .permissions import IsAdminOrReadOnly
 
 class EventsView(mixins.ListModelMixin, mixins.RetrieveModelMixin,GenericViewSet):
     queryset = Event.objects.all()
     serializer_class = EventsSerializer
-    permission_classes = [permissions.AllowAny]
-
+    permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend, filters.OrderingFilter]
+    search_fields = ['title', 'location']
+    ordering_fields = ['title', 'price', 'date_time']
 
 class BookingView(GenericViewSet):
     serializer_class = BookingSerializer
@@ -74,8 +78,6 @@ class BookingView(GenericViewSet):
         if event.available_seats < quantity:
             return Response({'error': f'Eventte bunsha bos orin joq, qalgan biletler sani: {event.available_seats} '}, status=status.HTTP_400_BAD_REQUEST)
         
-        if not event.available_seats - new_quantity > 0:
-            return Response({'error':f'Bul mugdarda bilet qalmagan, qalgan biletler sani: {event.available_seats}'}, status=status.HTTP_400_BAD_REQUEST)
         
         with transaction.atomic():
             event.available_seats -= quantity

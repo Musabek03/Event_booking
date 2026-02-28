@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 import uuid
+import qrcode
+from io import BytesIO
+from django.core.files import File
 
 class CustomUser(AbstractUser):
 
@@ -77,8 +80,7 @@ class Booking(models.Model):
     total_price = models.DecimalField(max_digits=12,decimal_places=2,null=True,blank=True)
 
     def save(self,*args, **kwargs):
-        if not self.total_price:
-            self.total_price = self.event.price*self.quantity
+        self.total_price = self.event.price*self.quantity
         super().save(*args, **kwargs)
 
     def __str__(self):
