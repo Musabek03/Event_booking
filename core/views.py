@@ -1,7 +1,7 @@
 from rest_framework import viewsets,filters, permissions,status,generics,mixins
 from rest_framework.viewsets import GenericViewSet
 from .models import CustomUser, Category,Event,Booking
-from .serializers import EventsSerializer,BookingSerializer,ReqeustBookingSerializer, RegisterUserSerializer
+from .serializers import EventsSerializer,BookingSerializer,RequestBookingSerializer, RegisterUserSerializer
 from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
@@ -17,8 +17,10 @@ class EventsView(mixins.ListModelMixin, mixins.RetrieveModelMixin,GenericViewSet
     serializer_class = EventsSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter, DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['category', 'date_time'] 
     search_fields = ['title', 'location']
     ordering_fields = ['title', 'price', 'date_time']
+
 
 class BookingView(GenericViewSet):
     serializer_class = BookingSerializer
@@ -51,10 +53,10 @@ class BookingView(GenericViewSet):
 
 
 
-    @extend_schema(request=ReqeustBookingSerializer)
+    @extend_schema(request=RequestBookingSerializer)
     @action(detail=False, methods=['post'])
     def book_event(self,request):
-        serializer = ReqeustBookingSerializer(data=self.request.data)
+        serializer = RequestBookingSerializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
 
         event_id = serializer.validated_data['event_id']
@@ -84,7 +86,6 @@ class BookingView(GenericViewSet):
             event.save()
 
             booking.quantity = new_quantity
-            booking.total_price = booking.event.price * new_quantity
             booking.save()
 
 

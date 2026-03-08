@@ -21,10 +21,10 @@ class BookingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Booking
-        fields = ['id','user','event', 'quantity', 'status', 'booking_code', 'total_price', 'created_at' ]
+        fields = ['id','user','event', 'quantity', 'status', 'booking_code', 'total_price', 'qr_code', 'created_at' ]
+        read_only_fields = ['status', 'booking_code', 'total_price', 'qr_code', 'created_at']
 
-
-class ReqeustBookingSerializer(serializers.Serializer):
+class RequestBookingSerializer(serializers.Serializer):
     event_id  = serializers.IntegerField()
     quantity = serializers.IntegerField(default = 1, min_value = 1)
 

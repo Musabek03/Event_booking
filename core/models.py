@@ -78,9 +78,26 @@ class Booking(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     total_price = models.DecimalField(max_digits=12,decimal_places=2,null=True,blank=True)
+    qr_code = models.ImageField(upload_to="qr_codes/", blank=True, null=True)
+
 
     def save(self,*args, **kwargs):
         self.total_price = self.event.price*self.quantity
+        if not self.qr_code:
+            qr_content = f"Ticket ID: {self.booking_code}\n User:{self.user.username}\n Eventa: {self.event.title}"
+
+            qr = qrcode.QRCode(box_size=10, border=4)
+            qr.add_data(qr_content)
+            qr.make(fit=True)
+
+            img = qr.make_image(fill_color='black', back_color='white')
+            buffer = BytesIO()
+            img.save(buffer,format="PNG")
+
+            filename = f"qr_{self.booking_code}.png"
+            self.qr_code.save(filename,File(buffer), save=False)
+            
+
         super().save(*args, **kwargs)
 
     def __str__(self):
