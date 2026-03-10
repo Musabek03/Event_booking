@@ -1,6 +1,6 @@
 from rest_framework import viewsets,filters, permissions,status,generics,mixins
 from rest_framework.viewsets import GenericViewSet
-from .models import CustomUser, Category,Event,Booking
+from .models import CustomUser, Category,Event,Booking, Waitlist
 from .serializers import EventsSerializer,BookingSerializer,RequestBookingSerializer, RegisterUserSerializer
 from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema
@@ -21,6 +21,19 @@ class EventsView(mixins.ListModelMixin, mixins.RetrieveModelMixin,GenericViewSet
     search_fields = ['title', 'location']
     ordering_fields = ['title', 'price', 'date_time']
 
+    @extend_schema(request=None )
+    @action(detail=True, methods=['post'],permission_classes=[permissions.IsAuthenticated])
+    def waitlist(self, request, pk=None):
+        event = get_object_or_404(Event, pk=pk)
+        
+        if event.available_seats>0:
+            return Response({'xabar': 'Biletler bar , satip alaberin!'})
+        if Waitlist.objects.filter(user = request.user, event=event).exists():
+            return Response({'xabar': 'Siz kutiw diziminde barsiz'})
+        
+        Waitlist.objects.create(user=request.user, event=event)
+
+        return Response({'success': 'Kútiw dizimine tabıslı qosıldıńız!'})  
 
 class BookingView(GenericViewSet):
     serializer_class = BookingSerializer
@@ -39,6 +52,12 @@ class BookingView(GenericViewSet):
             event.save()
 
             booking.delete()
+
+        first_waiting = Waitlist.objects.filter(event=event).order_by('created_at').first()
+
+        if first_waiting: 
+            print(f"XABARNAMA: Húrmetli {first_waiting.user.username}, {event.title} ilajına orın bosadı!")
+            first_waiting.delete()
 
         return Response({'message':'Bron biykar etildi'},status=status.HTTP_204_NO_CONTENT)
 

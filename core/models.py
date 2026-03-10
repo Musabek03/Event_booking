@@ -84,7 +84,7 @@ class Booking(models.Model):
     def save(self,*args, **kwargs):
         self.total_price = self.event.price*self.quantity
         if not self.qr_code:
-            qr_content = f"Ticket ID: {self.booking_code}\n User:{self.user.username}\n Eventa: {self.event.title}"
+            qr_content = f"Ticket ID: {self.booking_code}\n User:{self.user.username}\n Event: {self.event.title}"
 
             qr = qrcode.QRCode(box_size=10, border=4)
             qr.add_data(qr_content)
@@ -102,3 +102,11 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.event.title}"
+    
+
+class Waitlist(models.Model):
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
