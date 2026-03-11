@@ -11,6 +11,8 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from .permissions import IsAdminOrReadOnly
+from django.db.models import Sum,Count
+from rest_framework.views import APIView
 
 class EventsView(mixins.ListModelMixin, mixins.RetrieveModelMixin,GenericViewSet):
     queryset = Event.objects.all()
@@ -117,6 +119,24 @@ class UsereRegisterView(generics.CreateAPIView):
     serializer_class = RegisterUserSerializer
 
 
+class AdminDashboardView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self,request):
+        revenue_data = Booking.objects.aggregate(total=Sum('total_price'))
+        total_revenue = revenue_data['total'] or 0
+
+        top_event_data = Booking.objects.values('event__title').annotate(total_sold=Sum('quantity')).order_by('-total_sold').first()
+        top_event = top_event_data if top_event_data else "Ele bilet Satilmadi"
+
+        tickets_data = Booking.objects.aggregate(total_tct=Sum('quantity'))
+        total_tickets = tickets_data['total_tct'] or 0
+    
+        return Response({
+            'total_revenue': total_revenue,
+            'top_event': top_event,
+            'total_tickets': total_tickets
+        })
 
     
 
