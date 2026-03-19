@@ -1,7 +1,7 @@
 from rest_framework import viewsets,filters, permissions,status,generics,mixins
 from rest_framework.viewsets import GenericViewSet
 from .models import CustomUser, Category,Event,Booking, Waitlist
-from .serializers import EventsSerializer,BookingSerializer,RequestBookingSerializer, RegisterUserSerializer
+from .serializers import EventsSerializer,BookingSerializer,RequestBookingSerializer, RegisterUserSerializer, CategorySerializer
 from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
@@ -83,26 +83,26 @@ class BookingView(GenericViewSet):
         event_id = serializer.validated_data['event_id']
         quantity = serializer.validated_data['quantity']
 
-        event  = get_object_or_404(Event, id=event_id)
-
-        booking, created = Booking.objects.get_or_create(user=self.request.user, event=event,  defaults={'quantity': quantity})
-
-        new_quantity = quantity if created else booking.quantity + quantity
-
-        if event.date_time < timezone.now():
-            raise ValidationError({"detail": "Otip ketken eventke bilet alip bolmaydi"})
-
-        if new_quantity > 5:
-            return Response({'error':'Bir user maksimum 5 bilet bronlawi mumkin!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not event.is_active:
-            return Response({'error':'Aktiv emes event'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if event.available_seats < quantity:
-            return Response({'error': f'Eventte bunsha bos orin joq, qalgan biletler sani: {event.available_seats} '}, status=status.HTTP_400_BAD_REQUEST)
-        
-        
         with transaction.atomic():
+            event  = Event.objects.select_for_update().get(id=event_id)
+
+            booking, created = Booking.objects.get_or_create(user=self.request.user, event=event,  defaults={'quantity': quantity})
+
+            new_quantity = quantity if created else booking.quantity + quantity
+
+            if event.date_time < timezone.now():
+                raise ValidationError({"detail": "Otip ketken eventke bilet alip bolmaydi"})
+
+            if new_quantity > 5:
+                return Response({'error':'Bir user maksimum 5 bilet bronlawi mumkin!'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not event.is_active:
+                return Response({'error':'Aktiv emes event'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if event.available_seats < quantity:
+                return Response({'error': f'Eventte bunsha bos orin joq, qalgan biletler sani: {event.available_seats} '}, status=status.HTTP_400_BAD_REQUEST)
+            
+        
             event.available_seats -= quantity
             event.save()
 
@@ -123,7 +123,7 @@ class AdminDashboardView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self,request):
-        revenue_data = Booking.objects.aggregate(total=Sum('total_price'))
+        revenue_data = Booking.objects.filter(status='tolendi').aggregate(total=Sum('total_price'))
         total_revenue = revenue_data['total'] or 0
 
         top_event_data = Booking.objects.values('event__title').annotate(total_sold=Sum('quantity')).order_by('-total_sold').first()
@@ -138,5 +138,10 @@ class AdminDashboardView(APIView):
             'total_tickets': total_tickets
         })
 
+
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
     
 

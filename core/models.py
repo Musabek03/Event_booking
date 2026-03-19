@@ -63,6 +63,10 @@ class Event(models.Model):
     def __str__(self):
         return f" Event: {self.title}"
     
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.available_seats = self.total_seats
+        super().save(*args, **kwargs)
     
 
 

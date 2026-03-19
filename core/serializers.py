@@ -36,7 +36,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ["username", "password", "confirm_password"]
+        fields = ['phone_number', "username", "password", "confirm_password"]
 
     def validate(self, attrs):
         password = attrs.get('password')
@@ -58,3 +58,11 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+    
+
+class CategorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Category
+        fields = ['name', 'slug']
+        read_only_fields = ['slug']

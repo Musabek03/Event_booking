@@ -4,11 +4,13 @@ from django.contrib.auth.admin import UserAdmin
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
+    prepopulated_fields = {'slug': ('title',)}
     list_display = ('id','title', 'slug', 'description', 'location', 'date_time', 'price', 'available_seats', 'image', 'is_active')
 
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
+    prepopulated_fields = {'slug': ('name',)}
     list_display = ('name', 'slug')
 
 
